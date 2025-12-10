@@ -13,7 +13,6 @@ pipeline {
         stage('Install dependencies') {
             steps {
                 echo " Installation des dépendances Node..."
-                // Utilisation de 'bat' au lieu de 'sh' pour Windows
                 bat 'npm install'
             }
         }
@@ -21,13 +20,14 @@ pipeline {
         stage('Run tests') {
             steps {
                 echo " Exécution des tests..."
-                bat 'npm test'
+               
+                bat 'npm test -- --runInBand'
             }
         }
 
         stage('Build Docker image') {
             steps {
-                echo "Build de l\'image Docker..."
+                echo "Build de l\'image Docker..." 
                 bat 'docker build -t todo-app .'
             }
         }
