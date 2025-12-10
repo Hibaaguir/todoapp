@@ -1,7 +1,6 @@
 const db = require('../../src/persistence/sqlite');
 const fs = require('fs');
-const os = require('os');
-const path = require('path');
+const location = process.env.SQLITE_DB_LOCATION || '/etc/todos/todo.db';
 
 const ITEM = {
     id: '7aef3d7c-d301-4846-8358-2a91ec9d6be3',
@@ -9,40 +8,33 @@ const ITEM = {
     completed: false,
 };
 
-// Générer un fichier SQLite temporaire unique pour chaque exécution
-const location = path.join(os.tmpdir(), `todo-${Date.now()}.db`);
-process.env.SQLITE_DB_LOCATION = location;
-
-beforeEach(async () => {
-    // Supprimer l'ancien fichier si existant
-    if (fs.existsSync(location)) {
-        try {
-            fs.unlinkSync(location);
-        } catch (err) {
-            console.warn(`Impossible de supprimer ${location}, peut-être verrouillé. Ignoré.`);
-        }
+// --- CORRECTION 1 : Nettoyage après chaque test ---
+// On essaie de fermer la connexion pour libérer le fichier
+afterEach(async () => {
+    if (db.teardown) {
+        await db.teardown();
     }
-    await db.init();
 });
+// --------------------------------------------------
 
-afterAll(() => {
-    // Nettoyer le fichier après tous les tests
+beforeEach(() => {
+    // --- CORRECTION 2 : Gestion d'erreur sur la suppression ---
     if (fs.existsSync(location)) {
         try {
             fs.unlinkSync(location);
-        } catch (err) {
-            console.warn(`Impossible de supprimer ${location} après tests. Ignoré.`);
+        } catch (error) {
+            console.error('Erreur lors de la suppression de la DB (fichier verrouillé ?):', error);
         }
     }
 });
 
 test('it initializes correctly', async () => {
-    // L'initialisation est déjà faite dans beforeEach
-    const items = await db.getItems();
-    expect(items).toEqual([]);
+    await db.init();
 });
 
 test('it can store and retrieve items', async () => {
+    await db.init();
+
     await db.storeItem(ITEM);
 
     const items = await db.getItems();
@@ -51,11 +43,16 @@ test('it can store and retrieve items', async () => {
 });
 
 test('it can update an existing item', async () => {
+    await db.init();
+
+    const initialItems = await db.getItems();
+    expect(initialItems.length).toBe(0);
+
     await db.storeItem(ITEM);
 
     await db.updateItem(
         ITEM.id,
-        Object.assign({}, ITEM, { completed: !ITEM.completed })
+        Object.assign({}, ITEM, { completed: !ITEM.completed }),
     );
 
     const items = await db.getItems();
@@ -64,7 +61,9 @@ test('it can update an existing item', async () => {
 });
 
 test('it can remove an existing item', async () => {
+    await db.init();
     await db.storeItem(ITEM);
+
     await db.removeItem(ITEM.id);
 
     const items = await db.getItems();
@@ -72,6 +71,7 @@ test('it can remove an existing item', async () => {
 });
 
 test('it can get a single item', async () => {
+    await db.init();
     await db.storeItem(ITEM);
 
     const item = await db.getItem(ITEM.id);
