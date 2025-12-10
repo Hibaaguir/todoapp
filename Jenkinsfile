@@ -13,21 +13,22 @@ pipeline {
         stage('Install dependencies') {
             steps {
                 echo " Installation des dépendances Node..."
-                sh 'npm install'
+                // Utilisation de 'bat' au lieu de 'sh' pour Windows
+                bat 'npm install'
             }
         }
 
         stage('Run tests') {
             steps {
                 echo " Exécution des tests..."
-                sh 'npm test'
+                bat 'npm test'
             }
         }
 
         stage('Build Docker image') {
             steps {
                 echo "Build de l\'image Docker..."
-                sh 'docker build -t todo-app .'
+                bat 'docker build -t todo-app .'
             }
         }
     }
